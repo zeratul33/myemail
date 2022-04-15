@@ -36,14 +36,15 @@ public class MailDemo {
 //            is = new FileInputStream("MailUtil.properties");
             ClassLoader classLoader = MailDemo.class.getClassLoader();
             is = classLoader.getResourceAsStream("MailUtil.properties");
-            BufferedInputStream excelIs = new BufferedInputStream(new FileInputStream(new File("/home/zeratul/companyInfo.xlsx")));
+            BufferedInputStream excelIs = new BufferedInputStream(new FileInputStream(new File("companyInfo.xlsx")));
             XSSFWorkbook workbook = new XSSFWorkbook(excelIs);
-            BufferedInputStream wordIs = new BufferedInputStream(new FileInputStream(new File("/home/zeratul/content.docx")));
-            FileInputStream wordFile = new FileInputStream("/home/zeratul/content.docx");
+            BufferedInputStream wordIs = new BufferedInputStream(new FileInputStream(new File("content.docx")));
+            FileInputStream wordFile = new FileInputStream("content.docx");
             String content = mail.getContent(wordFile);
             pros.load(is);
             Map<String, String> recipients = mail.recipients(workbook);
-            mail.sendGroupEmails(pros,recipients,content);
+            String subject = mail.getSubject(workbook);
+            mail.sendGroupEmails(pros,recipients,content,subject);
 
 
         } catch (FileNotFoundException | MessagingException e) {
@@ -64,7 +65,7 @@ public class MailDemo {
 
     }
 
-    public void sendGroupEmails(Properties pros,Map<String,String> map,String content) throws MessagingException {
+    public void sendGroupEmails(Properties pros,Map<String,String> map,String content,String subject) throws MessagingException {
         String uname = pros.getProperty("username");
         String password = pros.getProperty("password");
         String address =pros.getProperty("internetAddress");
@@ -83,7 +84,7 @@ public class MailDemo {
             String comName = entry.getKey();
             String comAddress = entry.getValue();
             message.setRecipient(Message.RecipientType.TO,new InternetAddress(comAddress));
-            message.setSubject("邮件");
+            message.setSubject(subject);
 
             message.setContent(comName + ":\n" + content,"text/html;charset=utf-8");
             Transport.send(message);
@@ -97,7 +98,7 @@ public class MailDemo {
         Sheet sheet = workbook.getSheet("Sheet1");
         int firstRowNum = sheet.getFirstRowNum();
         int lastRowNum = sheet.getLastRowNum();
-        for (int i = firstRowNum;i<=lastRowNum;i++){
+        for (int i = firstRowNum+1;i<=lastRowNum;i++){
             Row row = sheet.getRow(i);
             Cell comname = row.getCell(0);
             Cell email = row.getCell(2);
@@ -107,6 +108,14 @@ public class MailDemo {
         return map;
     }
 
+    public String getSubject(Workbook workbook){
+        Sheet sheet = workbook.getSheet("Sheet1");
+        int firstRowNum = sheet.getFirstRowNum();
+        Row row = sheet.getRow(firstRowNum);
+        Cell cell = row.getCell(1);
+        return cell.getStringCellValue();
+    }
+
     public String getContent(InputStream is) throws IOException {
         StringBuilder stringBuilder = new StringBuilder();
         is = FileMagic.prepareToCheckMagic(is);
@@ -114,14 +123,16 @@ public class MailDemo {
 
         if (FileMagic.valueOf(is) == FileMagic.OLE2){
             WordExtractor wordExtractor = new WordExtractor(is);
-            String line = System.getProperty("line.separator");
-            stringBuilder.append("<br>").append(wordExtractor.getText());
+            String text = wordExtractor.getText();
+            text = text.replace("\r","<br>");
+            stringBuilder.append("<br>").append(text);
             wordExtractor.close();
         }else if (FileMagic.valueOf(is) == FileMagic.OOXML){
             XWPFDocument xwpfDocument = new XWPFDocument(is);
             XWPFWordExtractor xwpfWordExtractor = new XWPFWordExtractor(xwpfDocument);
-            String line = System.getProperty("line.separator");
-            stringBuilder.append("<br>").append(xwpfWordExtractor.getText());
+            String text = xwpfWordExtractor.getText();
+            text = text.replace("\r","<br>");
+            stringBuilder.append("<br>").append(text);
             xwpfDocument.close();
         }
 
