@@ -36,10 +36,10 @@ public class MailDemo {
 //            is = new FileInputStream("MailUtil.properties");
             ClassLoader classLoader = MailDemo.class.getClassLoader();
             is = classLoader.getResourceAsStream("MailUtil.properties");
-            BufferedInputStream excelIs = new BufferedInputStream(new FileInputStream(new File("companyInfo.xlsx")));
+            BufferedInputStream excelIs = new BufferedInputStream(new FileInputStream(new File("D:\\companyInfo.xlsx")));
             XSSFWorkbook workbook = new XSSFWorkbook(excelIs);
-            BufferedInputStream wordIs = new BufferedInputStream(new FileInputStream(new File("content.docx")));
-            FileInputStream wordFile = new FileInputStream("content.docx");
+            BufferedInputStream wordIs = new BufferedInputStream(new FileInputStream(new File("D:\\content.docx")));
+            FileInputStream wordFile = new FileInputStream("D:\\content.docx");
             String content = mail.getContent(wordFile);
             pros.load(is);
             Map<String, String> recipients = mail.recipients(workbook);
@@ -80,6 +80,8 @@ public class MailDemo {
 
         MimeMessage message = new MimeMessage(session);
         message.setFrom(new InternetAddress(address));
+        int size = map.size();
+        int count = 1;
         for (Map.Entry<String,String> entry : map.entrySet()){
             String comName = entry.getKey();
             String comAddress = entry.getValue();
@@ -88,6 +90,7 @@ public class MailDemo {
 
             message.setContent(comName + ":\n" + content,"text/html;charset=utf-8");
             Transport.send(message);
+            System.out.println("已完成"+ count++ + "/" + size);
         }
 
 
@@ -98,11 +101,22 @@ public class MailDemo {
         Sheet sheet = workbook.getSheet("Sheet1");
         int firstRowNum = sheet.getFirstRowNum();
         int lastRowNum = sheet.getLastRowNum();
-        for (int i = firstRowNum+1;i<=lastRowNum;i++){
+        for (int i = firstRowNum+1;i<=lastRowNum;){
             Row row = sheet.getRow(i);
+            if (row == null){
+                i++;
+                continue;
+            }
             Cell comname = row.getCell(0);
             Cell email = row.getCell(2);
+            if (comname == null || email == null){
+                i++;
+                continue;
+            }
+
             map.put(comname.getStringCellValue(),email.getStringCellValue());
+            i++;
+
 
         }
         return map;
